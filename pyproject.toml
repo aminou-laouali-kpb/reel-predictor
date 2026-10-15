@@ -1,0 +1,34 @@
+[project]
+name = "reel-predictor"
+version = "0.1.0"
+description = "Analyse locale d'un Reel seconde par seconde avant publication (TRIBE v2 + signaux vidéo)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "python-multipart>=0.0.9",
+  "faster-whisper>=1.1",
+  "scenedetect>=0.6.4",
+  "mediapipe>=0.10.14",
+  "rapidocr-onnxruntime>=1.4.4",
+  "nilearn>=0.11",
+  "numpy>=1.26",
+  "pandas>=2.2",
+  "pyyaml>=6",
+  "pillow>=10",
+  "huggingface_hub>=0.25",
+  "anthropic>=1.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[tool.uv]
+package = false
+# mediapipe tire opencv-contrib-python, rapidocr tire opencv-python : deux paquets
+# qui installent le même module cv2. On garde contrib (sur-ensemble) et on neutralise l'autre.
+override-dependencies = ["opencv-python ; sys_platform == 'never'"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

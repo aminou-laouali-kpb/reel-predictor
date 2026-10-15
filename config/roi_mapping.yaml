@@ -1,0 +1,63 @@
+# Réduction des 20 484 sommets fsaverage5 (sortie TRIBE v2) en ROI, puis ROI -> 6 indices.
+# Atlas : Destrieux (nilearn.datasets.fetch_atlas_surf_destrieux), labels résolus PAR NOM.
+# Sources et niveau de confiance détaillés : docs/RESEARCH.md
+# Les structures sous-corticales (amygdale, hippocampe, striatum, VTA) ne sont PAS sur la
+# surface corticale : chaque indice repose sur des proxys corticaux.
+
+atlas: destrieux
+space: fsaverage5
+hemispheres: both            # both | left | right  (moyenne des sommets des deux hémisphères)
+
+# ROI nommée -> labels Destrieux exacts (une ROI peut partager des labels avec une autre)
+rois:
+  ips:              [S_intrapariet_and_P_trans, G_parietal_sup]
+  fef:              [S_precentral-sup-part, S_front_sup]
+  early_visual:     [S_calcarine, G_cuneus, Pole_occipital]
+  mt:               [G_occipital_middle]
+  precentral:       [G_precentral]
+  premotor_ventral: [S_precentral-inf-part, G_front_inf-Opercular]
+  sma:              [G_and_S_paracentral]
+  supramarginal:    [G_pariet_inf-Supramar]
+  subcentral:       [G_and_S_subcentral]
+  insula_ant:       [G_insular_short, S_circular_insula_ant]
+  dacc:             [G_and_S_cingul-Mid-Ant, G_and_S_cingul-Ant]
+  angular:          [G_pariet_inf-Angular]
+  psts:             [S_temporal_sup]
+  dmpfc:            [G_front_sup]
+  frontopolar:      [G_and_S_transv_frontopol]
+  rectus:           [G_rectus]
+  temporal_pole:    [Pole_temporal]
+  ofc:              [G_orbital, S_orbital-H_Shaped, S_suborbital]
+  subcallosal:      [G_subcallosal]
+  parahippocampal:  [G_oc-temp_med-Parahip]
+  retrosplenial:    [G_cingul-Post-ventral]
+  pcc:              [G_cingul-Post-dorsal]
+  precuneus:        [G_precuneus, S_subparietal]
+  ifg:              [G_front_inf-Triangul, G_front_inf-Opercular]
+  fusiform:         [G_oc-temp_lat-fusifor]
+  mfg:              [G_front_middle]
+  # Diagnostic uniquement (aucun poids d'indice) : sert à vérifier que TRIBE réagit à la parole.
+  # Vérifié sur une vidéo de test synthétique (docs/RESEARCH.md §1.7) : +1,0 z (z intra-vidéo) pendant
+  # la parole vs silence, r = +0,48 avec l’indicateur de parole.
+  auditory:         [G_temp_sup-G_T_transv, S_temporal_transverse, G_temp_sup-Plan_tempo]
+  # Nombre de sommets fsaverage5 (G/D) par ROI : docs/RESEARCH.md §2.2 ; subcallosal (14/15),
+  # retrosplenial (26/41) et frontopolar (38/50) sont petites (moyennes stables car la sortie TRIBE est
+  # spatialement lisse, mais peu d'information propre).
+
+# Indice -> {ROI: poids signé}. Les poids sont normalisés par la somme des |poids| au calcul.
+indices:
+  attention:    {ips: 1.0, fef: 0.8, mt: 0.6, early_visual: 0.5}
+  action:       {premotor_ventral: 1.0, precentral: 0.8, sma: 0.8, supramarginal: 0.5, subcentral: 0.3}
+  tension:      {insula_ant: 1.0, dacc: 1.0}
+  manipulation: {angular: 0.8, psts: 0.8, dmpfc: 0.7, frontopolar: 0.6, temporal_pole: 0.6, supramarginal: 0.4, rectus: 0.4}
+  emotion:      {ofc: 1.0, insula_ant: 0.7, subcallosal: 0.6, rectus: 0.5, temporal_pole: 0.5}
+  memory:       {parahippocampal: 1.0, ifg: 0.8, fusiform: 0.6, mfg: 0.5, retrosplenial: 0.4, angular: 0.3, precuneus: 0.2, pcc: 0.2}
+
+# Confiance dans le lien indice <-> ROI (affichée dans l'UI). low = spéculatif.
+confidence:
+  attention: medium
+  action: low
+  tension: medium
+  manipulation: low
+  emotion: low
+  memory: low

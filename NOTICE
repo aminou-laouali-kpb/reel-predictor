@@ -1,0 +1,26 @@
+Reel Predictor
+Copyright (c) 2026 Aminou Laouali
+Code sous licence PolyForm Noncommercial 1.0.0 (voir LICENSE).
+
+Built with Llama.
+
+Ce dépôt ne contient AUCUN poids de modèle : ils sont téléchargés sur votre machine par `make setup` /
+au premier lancement, et chaque utilisateur doit accepter lui-même leurs licences.
+
+Composants tiers utilisés (non redistribués ici) :
+
+- TRIBE v2 / tribev2-mini — Meta FAIR — CC BY-NC 4.0 (usage NON COMMERCIAL uniquement).
+  https://github.com/facebookresearch/tribev2 · https://huggingface.co/facebook/tribev2
+  Toute utilisation des prédictions produites par cette app est soumise à cette restriction.
+- Llama 3.2 1B — Meta — Llama 3.2 Community License Agreement (acceptation requise sur Hugging Face),
+  Acceptable Use Policy incluse. « Llama 3.2 is licensed under the Llama 3.2 Community License,
+  Copyright © Meta Platforms, Inc. All Rights Reserved. »
+  https://huggingface.co/meta-llama/Llama-3.2-1B
+- V-JEPA 2 (Meta FAIR) — MIT. w2v-BERT 2.0 (Meta) — MIT.
+- faster-whisper — MIT ; modèles Whisper (OpenAI) — MIT.
+- MediaPipe (Google) — Apache 2.0. RapidOCR — Apache 2.0. PySceneDetect — BSD 3-Clause.
+- nilearn — BSD 3-Clause. Surfaces fsaverage5 : FreeSurfer (licence FreeSurfer). Atlas Destrieux (via nilearn).
+- uPlot — MIT. FastAPI, Uvicorn — MIT/BSD. Anthropic Python SDK — MIT (API Claude : conditions d'Anthropic).
+
+TRIBE, Llama et Meta sont des marques de Meta Platforms, Inc. Ce projet n'est ni affilié à Meta ni
+approuvé par Meta.

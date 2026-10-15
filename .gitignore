@@ -1,0 +1,20 @@
+# environnements
+.venv/
+tribe_worker/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+*.tmp
+
+# données personnelles : vidéos, analyses, base, calibration, scripts, caches
+data/
+
+# ressources générées par `make setup` (téléchargées ou dérivées de nilearn / FreeSurfer)
+app/static/vendor/
+app/static/brain_mesh.json
+app/static/brain3d.json
+
+# réglages locaux de l'éditeur / de l'assistant
+.claude/

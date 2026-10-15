@@ -1,0 +1,14 @@
+[project]
+name = "tribe-worker"
+version = "0.1.0"
+description = "Worker isolé qui exécute TRIBE v2 (venv séparé : pins torch<2.7, numpy==2.2.6)"
+requires-python = ">=3.12,<3.13"
+# Testé (2026-10-11, Apple M5) avec la résolution figée dans uv.lock : torch 2.6.0 (MPS), transformers 5.17.0,
+# numpy 2.2.6, neuralset 0.0.2, exca 0.5.20. transformers n'est pas pinné par tribev2 ; la v5.17 fonctionne
+# (V-JEPA 2, w2v-BERT, tête TRIBE ; LlamaModel en smoke test) : aucun pin ajouté. Ne pas faire `uv lock --upgrade` sans re-tester.
+dependencies = [
+  "tribev2 @ git+https://github.com/facebookresearch/tribev2.git@af58661791a351a448a489042a28f6c37e1c14b7",
+]
+
+[tool.uv]
+package = false

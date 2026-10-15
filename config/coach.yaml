@@ -1,0 +1,40 @@
+# Coach « script & montage ». Seul du texte (transcription, texte à l'écran, indices) est envoyé à l'API Claude,
+# jamais la vidéo. La simulation des variantes est 100 % locale (voix de synthèse macOS + TRIBE sans image).
+
+llm:
+  model: claude-opus-5-5     # modèle Claude utilisé pour la réécriture
+  effort: high               # low | medium | high | xhigh | max (profondeur de réflexion, coût)
+  max_tokens: 32000
+  max_cost_usd: 1.00         # garde-fou : refus si l'estimation dépasse
+  price_per_mtok: {input: 4.0, output: 20.0, cache_read: 0.20}   # $ / million de tokens (Opus 5.5)
+
+n_variants: 3                # nb de variantes de script demandées et simulées
+rounds: 2                    # 2 = seconde passe (~+0,15 $) : Claude corrige les régressions et segments faibles
+                             #     de la meilleure variante simulée ; 1 = une seule passe
+
+# Cible : pics aux moments clés + plancher ailleurs (indices 0..1)
+targets:
+  mode: relative             # relative = cibles tirées de VOS Reels analysés ; absolute = valeurs fixes ci-dessous
+  peak_percentile: 90        # (relative) cible d'un indice = son 90e percentile sur vos Reels (« vos meilleurs moments »)
+  floor_percentile: 25       # (relative) plancher = 25e percentile de floor_index sur vos Reels
+  min_reels: 2               # (relative) en dessous : repli sur les valeurs fixes
+  peak_min: 0.50             # bornes des cibles relatives
+  peak_max: 0.99
+  peak: 0.90                 # (absolute, ou repli) cible fixe des pics
+  floor: 0.50                # (absolute, ou repli) plancher fixe
+  floor_index: attention     # indice surveillé pour le plancher (pilote la rétention)
+  moments:
+    hook: {roles: [hook], window_s: [0, 3], indices: [attention, tension]}
+    fact: {roles: [fact], indices: [memory, emotion]}
+    cta:  {roles: [cta],  indices: [action]}
+
+# Lisibilité du texte à l'écran
+reading_wps: 3.5             # mots lisibles par seconde
+max_words_per_card: 8
+
+# Simulation
+simulation:
+  tts_voice: Thomas          # voix macOS (`say -v '?'` pour la liste) ; même voix pour l'original re-voicé
+  tts_rate_wpm: 190          # débit de parole (mots/minute), proche d'un Reel face caméra
+  brain_mode: no_video       # no_video = TRIBE texte + audio ; heuristic = sans cerveau
+  timeout_s: 900

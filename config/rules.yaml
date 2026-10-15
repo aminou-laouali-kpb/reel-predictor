@@ -1,0 +1,98 @@
+# =====================================================================================
+#  Reel Predictor — règles « quoi changer » (propriété : chantier ALGORITHME)
+# =====================================================================================
+# Chaque règle est une fonction enregistrée par son `name` dans reel_predictor/rules.py.
+#   enabled  : true/false
+#   severity : high | medium | low
+#   params   : seuils de la règle
+#   message  : texte FR ; variables disponibles : {t}, {t_end}, {duration} + celles de la règle
+# Les déclenchements consécutifs d'une même règle sont fusionnés en un intervalle t..t_end.
+# =====================================================================================
+version: 1
+rules:
+  - name: attention_drop_no_cut
+    enabled: true
+    severity: high
+    params:
+      attention_below: 0.42      # déclencheur absolu : attention prédite sous ce seuil ...
+      min_duration_s: 2          # ... pendant au moins 2 s consécutives
+      since_cut_min_s: 4         # ... et aucun changement de plan depuis 4 s (vaut aussi pour le relatif)
+      rel_drop: 0.15             # déclencheur relatif : attention ≥ 15 % sous son max des secondes précédentes ...
+      rel_window_s: 5            # ... max pris sur les 5 s précédentes
+      rel_min_duration_s: 2      # ... pendant au moins 2 s consécutives (0 dans rel_drop = désactivé)
+      onset_drop: 0.05           # début signalé = 1re seconde ≥ 5 % sous le pic local qui précède le creux
+      ignore_last_s: 3           # creux relatifs ignorés s'ils commencent dans les 3 dernières secondes (bord TRIBE)
+    # variables : {since_cut} (s sans cut au début du creux), {plan_s} (durée max du plan dans le creux),
+    #             {att_from} (pic avant le creux), {att_to} (minimum dans le creux)
+    message: "Chute d'attention à {t}s sans changement de plan depuis {since_cut} s (attention {att_from} → {att_to} jusqu'à {t_end}s, plan de {plan_s} s sans cut) : changez de plan ou d'angle vers {t}s, ou relancez avec un texte à l'écran, un zoom ou un b-roll."
+
+  - name: hook_dropoff
+    enabled: true
+    severity: high
+    params:
+      at_s: 3                    # rétention prédite mesurée à 3 s ...
+      retention_below: 0.72      # ... sous ce seuil = l'accroche fait fuir trop de spectateurs
+      # Avec le modèle de rétention actuel (hook_drop 0,08/s), la rétention à 3 s va de ≈ 0,69 (attention 0,3)
+      # à ≈ 0,78 (attention 1) ; 0,75 se déclencherait sur presque tous les Reels (attention d'accroche ≈ 0,6 → 0,73).
+      # 0,72 ≈ attention moyenne d'accroche < 0,53 sans cut (accroche nettement sous la moyenne).
+    # variables : {retention} (« 70 % »), {lost} (« 30 % »), {attention} (attention moyenne 0–3 s)
+    message: "Accroche qui fait fuir ({t}–{t_end}s) : rétention prédite de {retention} à {t_end}s ({lost} des spectateurs partis, attention moyenne {attention}). Ouvrez sur votre chiffre ou votre promesse la plus forte dès la 1re seconde (dite ET écrite, ≤ 8 mots), coupez le plan avant 2 s et supprimez toute introduction."
+
+  - name: weak_hook
+    enabled: true
+    severity: high
+    params:
+      window_s: 3                # les 3 premières secondes
+      min_elements: 2            # éléments d'accroche attendus (texte, visage, parole < 1 s, mouvement/cut)
+      speech_start_max_s: 1.0
+      motion_min: 0.35
+      attention_below: 0.5       # ou attention moyenne de l'accroche sous ce seuil
+    message: "Accroche faible (0–{t_end}s) : il manque {missing}. Dès la 1re seconde, affichez un texte choc, montrez un visage ou lancez la phrase clé."
+
+  - name: no_face_long
+    enabled: true
+    severity: medium
+    params:
+      min_duration_s: 6          # aucun visage pendant au moins 6 s
+    message: "Aucun visage de {t}s à {t_end}s : insérez un plan face caméra ou une réaction pour garder le lien humain."
+
+  - name: silence_gap
+    enabled: true
+    severity: medium
+    params:
+      min_duration_s: 2          # silence d'au moins 2 s
+      ignore_last_s: 1           # on tolère un silence final d'1 s
+    message: "Silence de {t}s à {t_end}s : ajoutez une musique, un bruitage ou raccourcissez ce passage."
+
+  - name: text_overload
+    enabled: true
+    severity: medium
+    params:
+      reading_wps: 3.0           # vitesse de lecture sur mobile (mots/s)
+      min_words: 12              # en dessous, jamais de surcharge
+      speech_window_s: 2         # mots prononcés à ± 2 s = sous-titres (pas de lecture en plus)
+    message: "Trop de texte de {t}s à {t_end}s : {words} mots à lire en {shown} s (≈ {needed} s nécessaires). Raccourcissez le texte ou laissez-le plus longtemps à l'écran."
+
+  - name: cta_missing
+    enabled: true
+    severity: medium
+    params:
+      last_fraction: 0.2         # les derniers 20 % de la vidéo
+    message: "Aucun appel à l'action dans les derniers 20 % (à partir de {t}s) : dites ou affichez « abonne-toi », « commente » ou « lien en bio »."
+
+  - name: tension_flat
+    enabled: true
+    severity: low
+    params:
+      window_s: 6                # fenêtre glissante
+      min_range: 0.06            # amplitude (max − min) de l'indice tension sous laquelle c'est « plat »
+      min_duration_s: 8
+    message: "Tension plate de {t}s à {t_end}s : variez le rythme (musique qui monte, changement de ton, effet sonore, question)."
+
+  - name: slow_start
+    enabled: true
+    severity: medium
+    params:
+      speech_start_max_s: 1.0    # la parole devrait démarrer avant 1 s
+      only_if_speech: true       # ignorée si la vidéo n'a aucune parole
+    message: "La parole ne démarre qu'à {start}s : commencez à parler dès la première seconde (coupez l'intro muette)."

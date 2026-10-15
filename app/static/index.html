@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Reel Predictor</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/vendor/uPlot.min.css">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Aller au contenu</a>
+
+  <div class="ambient" aria-hidden="true"><span class="orb o1"></span><span class="orb o2"></span><span class="orb o3"></span></div>
+
+  <header class="topbar">
+    <a class="brand" href="#main" id="brand-home" aria-label="Reel Predictor, retour en haut">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d0b2ff"/><stop offset=".5" stop-color="#ffeed8"/><stop offset="1" stop-color="#e8400d"/></linearGradient></defs>
+        <path d="M4 20c3-10 6 4 9-4s5 8 8 0 4-6 7-2" fill="none" stroke="url(#lg)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-name">reel<span>predictor</span></span>
+    </a>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button type="button" role="tab" id="tab-btn-before" aria-controls="tab-before" aria-selected="true">Avant publication</button>
+      <button type="button" role="tab" id="tab-btn-after" aria-controls="tab-after" aria-selected="false" tabindex="-1">Après publication</button>
+    </nav>
+    <div id="health" class="health" aria-live="polite"></div>
+    <button type="button" class="btn primary sm" id="new-analysis-btn">Nouvelle analyse</button>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <!-- ======================================================= AVANT PUBLICATION -->
+    <section id="tab-before" role="tabpanel" aria-labelledby="tab-btn-before">
+      <section class="hero" id="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <span class="eyebrow">TRIBE v2 · 100 % local · seconde par seconde</span>
+          <h1 id="hero-title" class="display">
+            <span class="line">Vois ton Reel</span>
+            <span class="line">dans <em>leur</em></span>
+            <span class="line glow" data-text="cerveau"><span class="grad">cerveau</span></span>
+          </h1>
+          <p class="lead">Un modèle cérébral regarde ta vidéo comme un spectateur : attention, tension, émotion, mémoire,
+            seconde par seconde. Tu vois ce qui s'allume, ce qui décroche, et quoi couper.</p>
+        <div class="drop-shell">
+          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-describedby="drop-help"
+               aria-label="Déposer une vidéo à analyser ou appuyer sur Entrée pour parcourir">
+            <svg viewBox="0 0 24 24" class="drop-icon" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <div class="drop-text">
+              <p class="drop-title">Glisse un Reel ici <span class="muted">(.mp4)</span></p>
+              <p id="drop-help" class="muted small">La vidéo ne quitte jamais cet ordinateur.</p>
+            </div>
+            <button type="button" class="btn primary" id="browse-btn">Choisir une vidéo →</button>
+            <input type="file" id="file-input" accept="video/mp4,video/quicktime,video/*" hidden>
+          </div>
+          <div id="progress" class="progress-box" hidden>
+            <div class="progress-head">
+              <span id="progress-stage">Préparation…</span>
+              <span id="progress-pct">0 %</span>
+            </div>
+            <div class="bar" id="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="progress-stage">
+              <div id="progress-fill"></div>
+            </div>
+            <p id="progress-msg" class="muted small"></p>
+            <p id="progress-eta" class="small"></p>
+          </div>
+          <div id="upload-error" class="banner error" role="alert" hidden></div>
+        </div>
+        </div>
+        <div class="hero-stage" aria-hidden="true">
+          <canvas id="hero-brain" class="brain3d"></canvas>
+          <div class="stage-ring"></div>
+          <p class="stage-hint">Fais-le tourner ↻</p>
+          <div id="hero-scan" class="scan-readout" hidden><span id="hero-scan-stage">Analyse</span><b id="hero-scan-pct">0 %</b></div>
+        </div>
+      </section>
+
+      <div class="layout">
+        <aside class="sidebar">
+          <div class="section-head">
+            <h2>Analyses précédentes</h2>
+            <span class="muted small">Clique pour rouvrir</span>
+          </div>
+          <ul id="history" class="history" aria-label="Analyses précédentes"></ul>
+        </aside>
+
+        <div class="content">
+          <div id="empty-state" class="empty-state">
+            <ol class="steps">
+              <li class="step"><span class="step-n">01</span><h2>Dépose</h2>
+                <p>Ton Reel 9:16, tel que tu comptes le publier. Rien n'est envoyé en ligne.</p></li>
+              <li class="step"><span class="step-n">02</span><h2>Le cerveau lit</h2>
+                <p>TRIBE v2 prédit l'activité corticale seconde par seconde ; cuts, visages, textes et voix complètent.</p></li>
+              <li class="step"><span class="step-n">03</span><h2>Corrige</h2>
+                <p>Score sur 100, rétention prédite, recommandations datées et coach script &amp; montage.</p></li>
+            </ol>
+            <p class="muted small center">Indices exploratoires, pas des mesures : compare-les ensuite à tes vraies stats dans « Après publication ».</p>
+          </div>
+
+          <div id="result" hidden>
+            <div id="banners" class="banners"></div>
+
+            <div class="result-head">
+              <div class="result-title">
+                <span class="eyebrow">Analyse</span>
+                <h2 id="r-title">—</h2>
+                <p id="r-sub" class="muted small"></p>
+              </div>
+              <div id="score-box" class="score-box" aria-live="polite">
+                <div class="score-value" id="score-value">--</div>
+                <div class="score-label">Score prédit<br><span class="muted">sur 100</span></div>
+              </div>
+            </div>
+
+            <div class="top-grid">
+              <div class="card video-card">
+                <video id="video" controls preload="metadata" playsinline></video>
+                <div id="now-readout" class="now-readout small" aria-live="off"></div>
+              </div>
+
+              <div class="card brain-card">
+                <div class="card-head">
+                  <h3>Carte cérébrale prédite</h3>
+                  <span id="brain-time" class="pill" aria-live="off"></span>
+                </div>
+                <div class="brain-toolbar">
+                  <div class="seg" role="group" aria-label="Type d'affichage">
+                    <button type="button" id="bv-3d" aria-pressed="true">3D</button>
+                    <button type="button" id="bv-flat" aria-pressed="false">À plat</button>
+                  </div>
+                  <div class="seg" id="brain-views" role="group" aria-label="Angle de vue">
+                    <button type="button" data-view="left">Gauche</button>
+                    <button type="button" data-view="right">Droite</button>
+                    <button type="button" data-view="top">Dessus</button>
+                    <button type="button" data-view="front">Face</button>
+                  </div>
+                </div>
+                <div class="brain-wrap">
+                  <div class="brain3d-wrap" id="brain3d-wrap">
+                    <canvas id="brain3d" class="brain3d" role="img" aria-label="Cerveau 3D : activité prédite à l'instant courant. Glisser pour tourner, molette pour zoomer, survoler une zone pour son nom."></canvas>
+                    <div id="brain-tip" class="brain-tip" hidden></div>
+                  </div>
+                  <canvas id="brain-canvas" role="img" aria-label="Carte cérébrale prédite à la seconde courante (4 vues de la surface corticale)" hidden></canvas>
+                  <div id="brain-empty" class="empty-inline" hidden></div>
+                </div>
+                <div id="brain-hl" class="brain-hl" role="group" aria-label="Voir les zones qui alimentent un indice"></div>
+                <div id="brain-legend" class="brain-legend">
+                  <span id="brain-vmin" class="small"></span>
+                  <div class="gradient" aria-hidden="true"></div>
+                  <span id="brain-vmax" class="small"></span>
+                </div>
+                <p id="brain-units" class="muted small center"></p>
+              </div>
+
+              <div class="card score-card">
+                <h3>Détail du score</h3>
+                <div id="index-means" class="index-means"></div>
+                <dl id="score-detail" class="score-detail"></dl>
+              </div>
+            </div>
+
+            <div class="card charts-card">
+              <div class="card-head">
+                <h3>Indices seconde par seconde</h3>
+                <span class="muted small">Cliquez sur une courbe pour aller à cet instant</span>
+              </div>
+              <div id="index-legend" class="legend" role="group" aria-label="Afficher ou masquer les indices"></div>
+              <div id="chart-indices" class="chart"></div>
+              <div class="card-head">
+                <h3>Rétention prédite</h3>
+                <span class="muted small" id="retention-note"></span>
+              </div>
+              <div id="chart-retention" class="chart"></div>
+              <p class="muted small chart-key">
+                <span class="key-cut" aria-hidden="true"></span> cut ·
+                <span class="key-low" aria-hidden="true"></span> 5 premières secondes (contexte limité) ·
+                <span class="key-rec" aria-hidden="true"></span> recommandation ·
+                <span class="key-coach" aria-hidden="true"></span> plan de montage du coach
+              </p>
+            </div>
+
+            <div class="bottom-grid">
+              <div class="card">
+                <h3>Recommandations <span class="muted small">(clic = aller au moment)</span></h3>
+                <ol id="recs" class="recs"></ol>
+              </div>
+              <div class="card">
+                <h3>Transcription</h3>
+                <div id="transcript" class="transcript"></div>
+              </div>
+            </div>
+
+            <!-- ------------------------------------------- coach script & montage (API Claude) -->
+            <section id="coach" class="card coach" aria-labelledby="coach-title">
+              <div class="card-head">
+                <h3 id="coach-title">Coach script &amp; montage</h3>
+                <span class="muted small">Réécriture par l'API Claude · simulation locale des variantes</span>
+              </div>
+              <p class="small">Objectif : <strong>pics ≥ 0,90</strong> aux moments clés (accroche 0–3 s : attention + tension ;
+                chiffre clé : mémoire + émotion ; appel à l'action : action) et <strong>plancher ≥ 0,50</strong> ailleurs.</p>
+              <div class="banner info coach-honesty">
+                <strong>À savoir.</strong> Seul du texte (transcription, textes à l'écran, indices) est envoyé à l'API Claude,
+                jamais la vidéo. Les variantes sont simulées localement <em>sans image</em> et avec une <em>voix de synthèse</em> :
+                les indices simulés sont spéculatifs et non calibrés, et les gains simulés ne garantissent pas les vues.
+              </div>
+              <div class="coach-actions">
+                <button type="button" class="btn primary" id="coach-btn" disabled>Générer des suggestions (API Claude)</button>
+                <span id="coach-cost" class="small muted" aria-live="polite"></span>
+              </div>
+              <div id="coach-nokey" class="banner warn" hidden>
+                <strong>Clé API Anthropic absente.</strong> Dans le Terminal, depuis le dossier du projet, lancez
+                <code>make api-key</code> (saisie masquée, la clé est rangée dans le trousseau macOS), puis rechargez la page.
+              </div>
+              <div id="coach-progress" class="progress-box" hidden>
+                <div class="progress-head">
+                  <span id="coach-stage">En attente…</span>
+                  <span id="coach-pct">0 %</span>
+                </div>
+                <div class="bar" id="coach-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="coach-stage">
+                  <div id="coach-fill" class="fill"></div>
+                </div>
+                <p id="coach-msg" class="muted small" aria-live="polite"></p>
+                <p id="coach-eta" class="small"></p>
+              </div>
+              <div id="coach-error" class="banner error" role="alert" hidden></div>
+              <div id="coach-result" hidden></div>
+              <div id="coach-history-wrap" class="coach-history-wrap" hidden>
+                <h4>Générations précédentes</h4>
+                <ul id="coach-history" class="history coach-history" aria-label="Générations précédentes"></ul>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================= APRÈS PUBLICATION -->
+    <section id="tab-after" role="tabpanel" aria-labelledby="tab-btn-after" hidden>
+      <section class="hero hero-sm" aria-labelledby="after-title">
+        <span class="eyebrow">Après publication</span>
+        <h1 id="after-title" class="display">
+          <span class="line">Prédit <em>vs</em> <span class="glow" data-text="réel"><span class="grad">réel</span></span></span>
+        </h1>
+        <p class="lead">Dépose tes captures Instagram Insights : l'app les lit, tu valides, et le modèle se recalibre sur tes vrais chiffres.</p>
+      </section>
+      <div class="after-grid">
+        <div class="card">
+          <h2>1. Reel publié</h2>
+          <label for="reel-select" class="field-label">Reel analysé</label>
+          <select id="reel-select"></select>
+          <fieldset class="window-choice">
+            <legend class="field-label">Fenêtre des statistiques</legend>
+            <label><input type="radio" name="window" value="48h" checked> 48 h</label>
+            <label><input type="radio" name="window" value="7d"> 7 jours</label>
+          </fieldset>
+
+          <h2>2. Captures Insights <span class="muted small">(3 max)</span></h2>
+          <div id="shot-drop" class="dropzone compact" tabindex="0" role="button"
+               aria-label="Déposer jusqu'à 3 captures d'écran Instagram Insights ou appuyer sur Entrée pour parcourir">
+            <p>Déposez vos captures d'écran Instagram Insights</p>
+            <button type="button" class="btn" id="shot-browse">Parcourir…</button>
+            <input type="file" id="shot-input" accept="image/*" multiple hidden>
+          </div>
+          <ul id="shots" class="shots" aria-label="Captures sélectionnées"></ul>
+          <button type="button" class="btn primary" id="ocr-btn" disabled>Lire les captures (OCR)</button>
+          <p id="ocr-status" class="small muted" aria-live="polite"></p>
+        </div>
+
+        <form id="insights-form" class="card" novalidate>
+          <h2>3. Vérifier et valider</h2>
+          <p class="muted small">La lecture automatique peut se tromper : comparez chaque champ à l'écran Instagram. Les champs vides sont ignorés.</p>
+          <div id="fields" class="fields"></div>
+          <details id="ocr-raw" class="ocr-raw">
+            <summary>Texte OCR brut</summary>
+            <pre id="ocr-raw-text">(aucune capture lue)</pre>
+          </details>
+          <label class="check"><input type="checkbox" id="validated"> J'ai vérifié chaque valeur avec l'écran Instagram</label>
+          <button type="submit" class="btn primary" id="save-btn" disabled>Valider et enregistrer</button>
+          <p id="save-status" class="small" aria-live="polite"></p>
+        </form>
+
+        <div class="card wide">
+          <h2>Prédit vs réel</h2>
+          <div id="cmp-summary" class="cmp-summary"></div>
+          <div id="chart-cmp" class="chart"></div>
+        </div>
+
+        <div class="card wide">
+          <div class="card-head">
+            <h2>Score prédit vs performance</h2>
+            <label class="inline">Axe vertical
+              <select id="scatter-metric">
+                <option value="views">Vues</option>
+                <option value="reach">Comptes touchés</option>
+              </select>
+            </label>
+          </div>
+          <div id="chart-scatter" class="chart"></div>
+          <p id="scatter-note" class="muted small"></p>
+          <div class="calib">
+            <button type="button" class="btn" id="calib-btn" disabled>Recalibrer la rétention</button>
+            <span id="calib-info" class="small muted"></span>
+          </div>
+          <div id="calib-result" class="small" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- révélation du score (fin d'analyse, ou clic sur le score) -->
+  <div id="reveal" class="reveal" role="dialog" aria-modal="true" aria-labelledby="reveal-label" hidden>
+    <div class="reveal-halo" aria-hidden="true"><span></span><span></span><span></span></div>
+    <canvas id="reveal-fx" class="reveal-fx" aria-hidden="true"></canvas>
+    <div class="reveal-inner">
+      <span class="eyebrow" id="reveal-label">Score prédit</span>
+      <p id="reveal-name" class="reveal-name"></p>
+      <div class="reveal-score" aria-live="polite">
+        <span id="reveal-num" class="reveal-num">0</span><span class="reveal-max">/100</span>
+      </div>
+      <p id="reveal-verdict" class="reveal-verdict"></p>
+      <div id="reveal-stats" class="reveal-stats"></div>
+      <button type="button" class="btn primary" id="reveal-go">Voir l'analyse seconde par seconde →</button>
+      <p class="muted small reveal-note">Estimation exploratoire : à confirmer avec tes vraies stats après publication.</p>
+    </div>
+  </div>
+
+  <dialog id="coach-dialog" class="coach-dialog" aria-labelledby="coach-dialog-title">
+    <form method="dialog">
+      <h3 id="coach-dialog-title">Lancer une génération payante ?</h3>
+      <p id="coach-dialog-cost"></p>
+      <ul class="small">
+        <li>Envoyé à l'API Claude (Anthropic) : transcription, textes lus à l'écran, indices et durées. <strong>Jamais la vidéo.</strong></li>
+        <li>Facturé sur votre compte API Anthropic ; appel annulé automatiquement si l'estimation dépasse le plafond.</li>
+        <li>Puis simulation locale des variantes (quelques minutes, une tâche lourde à la fois).</li>
+      </ul>
+      <div class="dialog-actions">
+        <button type="submit" value="cancel" class="btn" autofocus>Annuler</button>
+        <button type="submit" value="ok" class="btn primary" id="coach-confirm">Lancer la génération</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer class="footer">
+    <p class="footer-brand">reel<span>predictor</span></p>
+    <p>Modèle cérébral <strong>TRIBE v2</strong> (Meta FAIR) sous licence <strong>CC BY-NC 4.0</strong> : usage <strong>non commercial</strong> uniquement.
+      Backbone texte : Llama 3.2 (Llama 3.2 Community License). Indices exploratoires — ce ne sont pas des mesures.</p>
+  </footer>
+
+  <script src="/vendor/uPlot.iife.min.js"></script>
+  <script src="/brain3d.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

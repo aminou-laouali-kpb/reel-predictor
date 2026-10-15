@@ -1,0 +1,309 @@
+# =====================================================================================
+#  Reel Predictor — pondérations de l'algorithme (propriété : chantier ALGORITHME)
+# =====================================================================================
+# Toutes les pondérations vivent ici : aucune valeur n'est codée en dur dans le pipeline.
+# Les poids ROI -> indice (composante cérébrale) sont dans config/roi_mapping.yaml > indices.
+# Les seuils des recommandations « quoi changer » sont dans config/rules.yaml.
+# La section `retention` peut être surchargée par data/calibration.json (cf. calibrate.py).
+#
+# Rappel du calcul d'un indice I à la seconde t (valeurs 0..1) :
+#   signal(t)  = clip(baseline + Σ booster_k · feature_k(t), 0, 1)       (features toutes en 0..1)
+#   cerveau(t) = sigmoïde(gain · (Σ poids_roi · roi(t) / Σ|poids_roi| − centre))
+#   I(t)       = brain_weight · cerveau(t) + (1 − brain_weight) · signal(t)   (si cerveau dispo)
+#              = signal(t)                                                     (sinon)
+# =====================================================================================
+version: 1
+
+# --- Échantillonnage des images ------------------------------------------------------
+sampling:
+  frames_fps: 4          # images/s extraites (visages + mouvement)
+  ocr_fps: 1             # images/s envoyées à l'OCR (1 = une image au milieu de chaque seconde)
+  frame_width: 720       # largeur max (px) des images analysées (réduction si plus large)
+
+# --- Détection des plans (cuts) ------------------------------------------------------
+scenes:
+  detector: content      # content = PySceneDetect ContentDetector ; ffmpeg = filtre select(scene)
+  threshold: 27.0        # seuil du ContentDetector (plus bas = plus de cuts)
+  min_scene_len_s: 0.4   # durée minimale d'un plan
+  ffmpeg_threshold: 0.3  # seuil du repli ffmpeg select='gt(scene,X)'
+
+# --- Transcription (faster-whisper) --------------------------------------------------
+speech:
+  model: small           # tiny | base | small | medium ...
+  language: auto         # auto = détection ; sinon code ISO 639-1 (fr, en ...)
+  device: cpu
+  compute_type: int8
+  beam_size: 5
+  vad_filter: true
+  cpu_threads: 0         # 0 = automatique
+
+# --- Visages (MediaPipe FaceDetector, blaze_face_short_range) ------------------------
+faces:
+  min_confidence: 0.5    # score minimal d'une détection
+
+# --- OCR (RapidOCR) ------------------------------------------------------------------
+ocr:
+  min_score: 0.6             # on ignore les lignes reconnues sous ce score
+  min_chars: 2               # on ignore les lignes plus courtes (bruit)
+  same_text_similarity: 0.8  # similarité (0..1) au-delà de laquelle deux secondes affichent « le même » texte
+  det_limit_side_len: 736    # taille max du côté de l'image pour la détection (vitesse)
+  det_limit_type: max
+  use_angle_cls: false       # classifieur d'orientation (inutile pour du texte droit)
+  reuse_if_diff_below: 1.0   # si l'image a très peu changé (diff. moyenne 0..255), on réutilise l'OCR précédent
+
+# --- Audio ---------------------------------------------------------------------------
+audio:
+  window_s: 0.1          # fenêtre de calcul RMS (s)
+  silence_dbfs: -45.0    # silence si RMS de la seconde < ce niveau (dBFS) ...
+  silence_rel: 0.06      # ... ou si RMS < cette fraction du max de la vidéo
+
+# --- Construction des features (toutes ramenées en 0..1) -----------------------------
+features:
+  cut_tau_s: 1.5                 # cut_recent = exp(-(since_cut − 0,5) / tau) après un vrai cut (0 sans cut)
+  since_cut_long: {start_s: 3.0, full_s: 8.0}   # 0 avant 3 s sans cut, 1 à partir de 8 s
+  motion_ref: 14.0               # différence moyenne d'image (0..255, 4 i/s) qui vaut 1
+  speech_rate_ref: 3.5           # débit (mots/s) qui vaut 1
+  speech_rate_window_s: 3        # fenêtre glissante centrée du débit (contrat : 3 s)
+  text_density_ref: 12           # nb de mots à l'écran qui vaut 1
+  face_close_area: 0.10          # aire de visage (part de l'image) qui vaut 1 (gros plan)
+  loud_var_window_s: 3           # fenêtre de la variance de loudness
+  loud_var_ref_db: 6.0           # écart-type de loudness (dB) qui vaut 1
+  loud_jump_ref_db: 10.0         # |Δ loudness| entre deux secondes (dB) qui vaut 1
+  keyword_min_len: 4             # longueur min d'un mot-clé (répétition)
+  keyword_repeat_ref: 2          # nb de mots-clés répétés dans la seconde qui vaut 1
+  overlap_window_s: 2            # texte écran = parole si le mot est prononcé à ± N s
+
+# Mots-clés d'appel à l'action (recherche insensible à la casse et aux accents).
+# Texte à l'écran : l'OCR colle souvent les mots (« PRENDREMONGUIDE ») ; les mots-clés d'au moins 5 lettres
+# sont aussi cherchés « collés » dans un mot plus long (reel_predictor/textutils.py, garde-fous anti faux positifs).
+cta_keywords:
+  - abonne-toi
+  - abonne toi
+  - abonnez-vous
+  - abonnez vous
+  - abonne
+  - lien en bio
+  - lien dans la bio
+  - commente
+  - commentez
+  - commentaire
+  - partage
+  - partagez
+  - enregistre
+  - enregistrez
+  - sauvegarde
+  - like
+  - clique
+  - cliquez
+  - suis-moi
+  - suivez-moi
+  - n'hésite pas
+  - n'hésitez pas
+  - contacte-nous
+  - contactez-nous
+  - vous contacter
+  - écris-moi
+  - écrivez-nous
+  - inscris-toi
+  - inscrivez-vous
+  - télécharge
+  - message privé
+  - follow
+  - subscribe
+  - link in bio
+  - comment below
+  - drop a comment
+  - share
+  - save this
+  - tag a friend
+  # ajout 12/10/2026 (faux positif « cta_missing » : « Clique sur le bouton », « Prends mon guide », « copie et colle »)
+  - clic
+  - prends
+  - prendre
+  - guide
+  - lien
+  - bouton
+  - dm
+  - envoie-moi
+  - réserve
+  - réservez
+  - copie
+  - copiez
+  - télécharger
+  - téléchargez
+  - click
+  - download
+  - grab
+  - sign up
+  - link
+  - button
+  - dm me
+
+# Mots de persuasion / urgence (indice « manipulation »).
+persuasion_keywords:
+  - secret
+  - personne ne
+  - jamais
+  - maintenant
+  - vite
+  - gratuit
+  - incroyable
+  - attention
+  - erreur
+  - arrête
+  - arrêtez
+  - urgent
+  - dernière chance
+  - garanti
+  - tout le monde
+  - you need
+  - never
+  - nobody
+  - free
+  - mistake
+  - stop
+  - now
+
+# Nombres écrits en toutes lettres (feature « number » : promesses chiffrées, listes).
+number_words: [deux, trois, quatre, cinq, six, sept, huit, neuf, dix, cent, mille, million,
+  premier, premiere, deuxieme, troisieme, two, three, four, five, seven, eight, nine, ten,
+  hundred, thousand, first, second, third]
+
+# Mots vides ignorés pour la répétition de mots-clés (indice « mémoire »).
+stopwords: [alors, avec, aussi, avoir, bien, cela, cette, comme, dans, donc, elle, elles, encore,
+  être, fait, faire, leur, mais, même, nous, pour, plus, quand, quel, quelle, sans, sont, sous,
+  suis, tout, tous, très, vous, votre, vos, voici, voilà, about, from, have, just, like, that,
+  them, then, there, they, this, what, when, with, your]
+
+# --- Indices : mélange cerveau / signaux et boosters non cérébraux -------------------
+# features disponibles : cut, cut_recent, since_cut_long, motion, face_present, face_close,
+#   speech, speech_rate, speech_onset, text_present, text_new, text_density, cta, persuasion,
+#   loudness, loud_var, loud_jump, silence, keyword_repeat, text_speech_overlap, number, hook_window
+indices:
+  attention:
+    brain_weight: 0.6        # part de la composante cérébrale (TRIBE) quand elle existe
+    baseline: 0.42
+    boosters:
+      cut_recent: 0.22       # un cut récent relance l'attention
+      motion: 0.12
+      text_new: 0.10         # un nouveau texte à l'écran
+      speech_onset: 0.06     # la parole (re)démarre
+      loud_jump: 0.08        # changement brusque de volume
+      face_close: 0.05
+      hook_window: 0.05      # bonus des 3 premières secondes
+      since_cut_long: -0.20  # plan qui dure trop
+      silence: -0.10
+  action:
+    brain_weight: 0.4
+    baseline: 0.22
+    boosters:
+      cta: 0.50              # appel à l'action détecté (parole ou écran)
+      speech_rate: 0.08
+      motion: 0.08
+      text_new: 0.05
+  tension:
+    brain_weight: 0.5
+    baseline: 0.30
+    boosters:
+      loud_var: 0.22         # variance de loudness
+      loud_jump: 0.22        # changement brusque
+      cut_recent: 0.10
+      speech_rate: 0.10
+      persuasion: 0.08
+      silence: -0.08
+  manipulation:
+    brain_weight: 0.4
+    baseline: 0.22
+    boosters:
+      persuasion: 0.35       # urgence, « secret », « personne ne »...
+      cta: 0.15
+      face_close: 0.10
+      number: 0.08           # chiffres / promesses quantifiées
+      speech_rate: 0.05
+  emotion:
+    brain_weight: 0.4
+    baseline: 0.30
+    boosters:
+      face_close: 0.30       # visage proche
+      face_present: 0.08
+      loudness: 0.08
+      loud_jump: 0.08
+      persuasion: 0.05
+      silence: -0.05
+  memory:
+    brain_weight: 0.4
+    baseline: 0.28
+    boosters:
+      keyword_repeat: 0.22   # répétition de mots-clés
+      text_present: 0.10     # texte à l'écran
+      text_speech_overlap: 0.18   # même mot dit ET affiché (double codage)
+      number: 0.08
+      text_new: 0.05
+
+# --- Normalisation -------------------------------------------------------------------
+normalization:
+  sigmoid_gain: 1.5          # pente de la sigmoïde (z robuste -> 0..1) pour la composante cérébrale
+  sigmoid_center: 0.0        # z correspondant à 0,5
+  brain_roi_source: corpus   # corpus = roi (référence de corpus) ; video = roi_video_z (intra-vidéo)
+  mad_scale: 1.4826          # roi = (valeur − médiane) / (mad_scale · MAD)
+  reference_min_reels: 3     # en dessous : médiane 0 / MAD 1 par défaut
+  reference_max_seconds_per_reel: 120   # nb max de secondes conservées par reel dans la référence
+  hrf_shift_s: 0             # décalage supplémentaire (s) ; TRIBE décale déjà de 5 s
+  smoothing: [0.25, 0.5, 0.25]   # lissage temporel des indices (noyau centré) ; [] = aucun
+
+# --- Section cerveau -----------------------------------------------------------------
+brain:
+  provider: tribe            # tribe | heuristic | mock
+  model: facebook/tribev2-mini
+  device: auto               # auto | cpu | mps
+  timeout_s: 1800            # au-delà : repli heuristique « Délai dépassé »
+  no_text: false             # true = TRIBE sans backbone texte (LLaMA, modèle gated)
+  retry_without_text: true   # si l'accès LLaMA est refusé, relancer TRIBE avec --no-text
+  low_context_s: 5           # flag low_context sur t < N quand le cerveau est utilisé
+  low_context_end_s: 3       # flag low_context_end sur les N dernières secondes (prédiction TRIBE floue, ±3 s)
+
+# --- Score global (0..100) -----------------------------------------------------------
+score:
+  weights:                   # poids des moyennes d'indices (+ rétention moyenne prédite)
+    attention: 0.30
+    emotion: 0.12
+    memory: 0.12
+    tension: 0.08
+    action: 0.08
+    manipulation: 0.05
+    retention: 0.25
+  floor: 0.25                # moyenne pondérée <= floor -> 0 ; >= ceil -> 100 (linéaire entre)
+  ceil: 0.75
+  hook:                      # bonus des 3 premières secondes (points de score)
+    window_s: 3
+    text: 2.0                # texte à l'écran
+    face: 2.0                # visage
+    speech_start: 2.0        # la parole démarre avant speech_start_max_s
+    speech_start_max_s: 1.0
+    motion_or_cut: 2.0       # mouvement ou cut
+    motion_min: 0.35         # feature motion minimale pour compter
+    max: 8.0
+  dips:                      # pénalité des creux prolongés
+    index: attention
+    threshold: 0.40
+    min_duration_s: 3
+    points_per_second: 1.5
+    max: 15.0
+
+# --- Modèle de rétention -------------------------------------------------------------
+# r(0) = 1 ; r(t+1) = clip(r(t) · (1 − base_drop(t) − k·(1 − attention(t)) + bonus·cut_recent(t)), 0, 1)
+# base_drop(t) = hook_drop pour t < hook_seconds, sinon base_drop.
+# summary.retention.curve[i] = r(i) pour i = 0..T (instants) ; timeline[t].retention = r(t+1).
+retention:
+  hook_seconds: 3
+  hook_drop: 0.08
+  base_drop: 0.012
+  k_attention: 0.05
+  cut_bonus: 0.02
+  allow_increase: false      # false : la courbe ne remonte jamais (un cut freine la chute)
+  calibration_bounds:        # bornes de l'ajustement (calibrate.py)
+    hook_drop: [0.0, 0.35]
+    base_drop: [0.0, 0.10]
+    k_attention: [0.0, 0.25]
+    cut_bonus: [0.0, 0.10]
+  calibration_ridge: 0.002   # rappel (pénalité quadratique normalisée) vers les valeurs ci-dessus pendant l'ajustement
